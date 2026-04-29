@@ -1232,40 +1232,56 @@ async function loadBrasil() {
         const rows=await fetchSheet(SHEET_ID, sheet);
         if (rows.length<2) continue;
         const H=rows[0].map(h=>(h||'').trim());
-        const ci=name=>H.findIndex(h=>h===name||h.replace(/\s+/g,' ').trim()===name);
+        const ci=name=>H.findIndex(h=>h.trim()===name);
         const IDX={
           fecha:    ci('Fecha Creación Venta'),
           canal:    ci('Canal De Venta'),
           skus:     ci("Sku's Vendidos"),
           precio:   ci('Precio Final'),
-          rent:     ci('Rentabilidad Final'),
+          rent:     ci('Utilidad Venta'),   // $ amount, not %
           costo:    ci('Costo Sin Iva (total de productos)'),
-          utilidad: ci('Utilidad Venta'),
         };
-        // Fallback: buscar por fragmento si no encontró exacto
-        if (IDX.fecha<0) IDX.fecha=H.findIndex(h=>h.includes('Fecha') && h.includes('Venta'));
-        if (IDX.canal<0) IDX.canal=H.findIndex(h=>h.includes('Canal'));
-        if (IDX.skus<0)  IDX.skus=H.findIndex(h=>h.includes('Sku'));
+        // Fallback por fragmento
+        if (IDX.fecha<0)  IDX.fecha=H.findIndex(h=>h.includes('Fecha')&&h.includes('Venta'));
+        if (IDX.canal<0)  IDX.canal=H.findIndex(h=>h.includes('Canal'));
+        if (IDX.skus<0)   IDX.skus=H.findIndex(h=>h.includes('Sku'));
         if (IDX.precio<0) IDX.precio=H.findIndex(h=>h.includes('Precio Final'));
-        if (IDX.rent<0)  IDX.rent=H.findIndex(h=>h.includes('Rentabilidad'));
-        if (IDX.costo<0) IDX.costo=H.findIndex(h=>h.includes('Costo Sin'));
-        console.log('Brasil IDX:', IDX, 'Headers:', H.slice(0,25));
+        if (IDX.rent<0)   IDX.rent=H.findIndex(h=>h.includes('Utilidad Venta'));
+        if (IDX.costo<0)  IDX.costo=H.findIndex(h=>h.includes('Costo Sin'));
+        console.log('Brasil IDX:', IDX);
+
+        // Parser especial para R$ — elimina R$, comas y espacios
+        const pnBr=v=>{
+          if (!v) return 0;
+          let s=String(v).trim().replace(/R\$|\s/g,'').replace(/,/g,'');
+          // Si es porcentaje ignorar
+          if (s.includes('%')) return 0;
+          return parseFloat(s)||0;
+        };
+        // Fecha Brasil: viene como D/M/YYYY
+        const parseDateBr=str=>{
+          if (!str) return null;
+          const s=String(str).trim();
+          const parts=s.split('/');
+          if (parts.length===3) return new Date(+parts[2],+parts[1]-1,+parts[0]);
+          return parseDate(str);
+        };
+
         for (let i=1;i<rows.length;i++) {
           const r=rows[i];
           if (!r||r.length<5) continue;
-          const pf=IDX.precio>=0?pn(r[IDX.precio]):0;
+          const pf=pnBr(r[IDX.precio]);
           if (!pf) continue;
-          const fecha=IDX.fecha>=0?parseDate(r[IDX.fecha]):null;
+          const fecha=parseDateBr(r[IDX.fecha]);
           const skuRaw=(IDX.skus>=0?r[IDX.skus]||'':'').trim();
           const skus=skuRaw.split(',').map(s=>s.trim()).filter(Boolean);
           brData.push({
             sheet, fecha, fechaStr:dateToStr(fecha),
             canal:(IDX.canal>=0?(r[IDX.canal]||'Sin canal'):'Sin canal').trim(),
             skuRaw, skus, precioFinal:pf,
-            rentabilidad:IDX.rent>=0?pn(r[IDX.rent]):0,
-            costo:IDX.costo>=0?pn(r[IDX.costo]):0,
-            facturUSD:0, utilidad:IDX.utilidad>=0?pn(r[IDX.utilidad]):0,
-            pm:'', vendedor:'', categoria:'Sin categoría',
+            rentabilidad:pnBr(r[IDX.rent]),
+            costo:pnBr(r[IDX.costo]),
+            facturUSD:0, utilidad:0, pm:'', vendedor:'', categoria:'Sin categoría',
           });
         }
       } catch(e){ console.warn('Brasil sheet error:',sheet,e); }

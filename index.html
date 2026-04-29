@@ -1404,6 +1404,7 @@ function renderBrasil() {
     </div>
   `;
 
+  requestAnimationFrame(()=>{
   charts.brDiario=new Chart(document.getElementById('chartBrDiario'),{
     type:'line',
     data:{labels:days.map(fmtDay),datasets:[{label:'Facturación',data:days.map(d=>byDay[d]),borderColor:'#3b82f6',backgroundColor:'#3b82f615',borderWidth:2,pointRadius:4,pointBackgroundColor:'#3b82f6',tension:0.1,fill:true}]},
@@ -1432,6 +1433,7 @@ function renderBrasil() {
     ]},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index'},plugins:{legend:{labels:{color:'#8b90a0',font:{family:'DM Mono',size:9},boxWidth:10}},tooltip:{callbacks:{label:ctx=>ctx.dataset.label==='Rent. %'?` Rent: ${ctx.raw.toFixed(1)}%`:` ${ctx.dataset.label}: ${fmt$(ctx.raw)}`}}},scales:{x:{grid:{color:'#1a1d24'},ticks:{color:'#8b90a0',font:{family:'DM Mono',size:10}}},y:{position:'left',grid:{color:'#1a1d24'},ticks:{color:'#8b90a0',font:{family:'DM Mono',size:9},callback:v=>fmt$(v)}},y2:{position:'right',grid:{display:false},ticks:{color:'#ffe600',font:{family:'DM Mono',size:9},callback:v=>v.toFixed(0)+'%'}}}}
   });
+  }); // end requestAnimationFrame
 }
 async function loadCobranzas() {
   const el=document.getElementById('page-cobranzas');

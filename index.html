@@ -1344,7 +1344,7 @@ function renderBrasil() {
 
   // Top SKUs
   const bySku={};
-  data.forEach(d=>d.skus.forEach(s=>{bySku[s]=(bySku[s]||0)+d.precioFinal/d.skus.length;}));
+  data.forEach(d=>d.skus.forEach(s=>{bySku[s]=(bySku[s]||0)+d.precioFinal;}));
   const topSkus=Object.entries(bySku).sort((a,b)=>b[1]-a[1]).slice(0,15);
 
   el.innerHTML=`

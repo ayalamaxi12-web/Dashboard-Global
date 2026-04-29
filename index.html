@@ -199,6 +199,29 @@ tbody td:not(:first-child){text-align:right;}
   <button class="btn" onclick="resetFilters()">Limpiar</button>
 </div>
 
+<!-- FILTROS BRASIL -->
+<div id="filters-brasil" class="filters-bar" style="display:none;">
+  <div class="filter-group">
+    <span class="filter-label p1">● Desde</span>
+    <input type="date" id="br-desde">
+  </div>
+  <div class="filter-group">
+    <span class="filter-label p1">Hasta</span>
+    <input type="date" id="br-hasta">
+  </div>
+  <div class="filters-sep"></div>
+  <div class="filter-group">
+    <span class="filter-label">Canal</span>
+    <div class="ms-wrap" id="ms-br-canal"><div class="ms-trigger" onclick="toggleMS('ms-br-canal')">Todos</div><div class="ms-dropdown"><div class="ms-search"><input type="text" placeholder="Buscar..." oninput="filterMSOptions(this,'ms-br-canal')"></div><div class="ms-list"></div><div class="ms-actions"><button onclick="selectAllMS('ms-br-canal')">Todos</button><button onclick="clearMS('ms-br-canal')">Ninguno</button></div></div></div>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">SKU</span>
+    <input type="text" id="br-sku" placeholder="Buscar SKU..." style="width:130px;" onkeydown="if(event.key==='Enter')applyBrFilters()">
+  </div>
+  <button class="btn primary" onclick="applyBrFilters()">Aplicar</button>
+  <button class="btn" onclick="resetBrFilters()">Limpiar</button>
+</div>
+
 <main>
   <!-- PÁGINA VENTAS -->
   <div id="page-ventas" class="page active">
@@ -270,7 +293,7 @@ const PALETTE = ['#3b82f6','#00e5a0','#ffe600','#f59e0b','#ef4444','#a855f7','#0
 const COBR_ID = '1PFZqXrw-hqmidVulBAhgzZVyzGR-j2hmrDDBt3XSpVk';
 const SHEETS_BR = ['Base Brasil'];
 const SHORT_BR  = {'Base Brasil':'Brasil 2026'};
-let brData=[], brLoaded=false, cobrLoaded=false;
+let brData=[], brLoaded=false, cobrLoaded=false, cobrData=[];
 let histSkus=[], histData={}, histAllData={}, histLoaded=false;
 let allData=[], canalColors={}, activeFilters={}, currentPage='ventas', charts={};
 
@@ -607,9 +630,27 @@ function switchPage(page, btn) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
   document.getElementById('filters-section').style.display=page==='ventas'?'flex':'none';
+  document.getElementById('filters-brasil').style.display=page==='brasil'?'flex':'none';
   if (page==='historico' && !histLoaded) loadHistorico();
   if (page==='cobranzas' && !cobrLoaded) loadCobranzas();
   if (page==='brasil' && !brLoaded) loadBrasil();
+}
+
+let brFilters={};
+function applyBrFilters() {
+  brFilters={
+    desde:document.getElementById('br-desde').value,
+    hasta:document.getElementById('br-hasta').value,
+    canal:getMSValues('ms-br-canal'),
+    sku:document.getElementById('br-sku').value.trim().toLowerCase(),
+  };
+  renderBrasil();
+}
+function resetBrFilters() {
+  ['br-desde','br-hasta','br-sku'].forEach(id=>document.getElementById(id).value='');
+  clearMS('ms-br-canal');
+  brFilters={};
+  renderBrasil();
 }
 
 // ——— RENDER VENTAS ———
@@ -1189,25 +1230,51 @@ async function loadBrasil() {
     for (const sheet of SHEETS_BR) {
       try {
         const rows=await fetchSheet(SHEET_ID, sheet);
-        // Use same parser as Argentina but map Rentabilidad Final → rentabilidad
-        const parsed=parseVentas(rows, sheet);
-        // If rentabilidad is 0 for all, try Rentabilidad Final column
-        if (parsed.length && parsed.every(d=>d.rentabilidad===0)) {
-          const H=rows[0].map(h=>(h||'').trim());
-          const rentFinalIdx=H.indexOf('Rentabilidad Final');
-          if (rentFinalIdx>=0) {
-            parsed.forEach((d,i)=>{
-              const r=rows[i+1];
-              if(r) d.rentabilidad=pn(r[rentFinalIdx]);
-            });
-          }
+        if (rows.length<2) continue;
+        const H=rows[0].map(h=>(h||'').trim());
+        const ci=name=>H.findIndex(h=>h===name||h.replace(/\s+/g,' ').trim()===name);
+        const IDX={
+          fecha:    ci('Fecha Creación Venta'),
+          canal:    ci('Canal De Venta'),
+          skus:     ci("Sku's Vendidos"),
+          precio:   ci('Precio Final'),
+          rent:     ci('Rentabilidad Final'),
+          costo:    ci('Costo Sin Iva (total de productos)'),
+          utilidad: ci('Utilidad Venta'),
+        };
+        // Fallback: buscar por fragmento si no encontró exacto
+        if (IDX.fecha<0) IDX.fecha=H.findIndex(h=>h.includes('Fecha') && h.includes('Venta'));
+        if (IDX.canal<0) IDX.canal=H.findIndex(h=>h.includes('Canal'));
+        if (IDX.skus<0)  IDX.skus=H.findIndex(h=>h.includes('Sku'));
+        if (IDX.precio<0) IDX.precio=H.findIndex(h=>h.includes('Precio Final'));
+        if (IDX.rent<0)  IDX.rent=H.findIndex(h=>h.includes('Rentabilidad'));
+        if (IDX.costo<0) IDX.costo=H.findIndex(h=>h.includes('Costo Sin'));
+        console.log('Brasil IDX:', IDX, 'Headers:', H.slice(0,25));
+        for (let i=1;i<rows.length;i++) {
+          const r=rows[i];
+          if (!r||r.length<5) continue;
+          const pf=IDX.precio>=0?pn(r[IDX.precio]):0;
+          if (!pf) continue;
+          const fecha=IDX.fecha>=0?parseDate(r[IDX.fecha]):null;
+          const skuRaw=(IDX.skus>=0?r[IDX.skus]||'':'').trim();
+          const skus=skuRaw.split(',').map(s=>s.trim()).filter(Boolean);
+          brData.push({
+            sheet, fecha, fechaStr:dateToStr(fecha),
+            canal:(IDX.canal>=0?(r[IDX.canal]||'Sin canal'):'Sin canal').trim(),
+            skuRaw, skus, precioFinal:pf,
+            rentabilidad:IDX.rent>=0?pn(r[IDX.rent]):0,
+            costo:IDX.costo>=0?pn(r[IDX.costo]):0,
+            facturUSD:0, utilidad:IDX.utilidad>=0?pn(r[IDX.utilidad]):0,
+            pm:'', vendedor:'', categoria:'Sin categoría',
+          });
         }
-        brData=brData.concat(parsed);
       } catch(e){ console.warn('Brasil sheet error:',sheet,e); }
     }
+    console.log('Brasil loaded:', brData.length, 'rows');
     const canalesBr=[...new Set(brData.map(d=>d.canal))].sort();
     canalesBr.forEach((c,i)=>{ if(!canalColors[c]) canalColors[c]=PALETTE[i%PALETTE.length]; });
     brLoaded=true;
+    initMS('ms-br-canal', new Set(brData.map(d=>d.canal)));
     renderBrasil();
   } catch(e) {
     console.error(e);
@@ -1223,11 +1290,13 @@ function renderBrasil() {
   if (charts.brCross)  { try{charts.brCross.destroy();}catch(e){} }
   if (charts.brDonut)  { try{charts.brDonut.destroy();}catch(e){} }
 
-  // Filtered Brasil data (respect date filters from activeFilters)
-  const f=activeFilters;
+  // Apply Brasil filters
+  const f=brFilters||{};
   let data=brData;
   if (f.desde) data=data.filter(d=>d.fechaStr>=f.desde);
   if (f.hasta) data=data.filter(d=>d.fechaStr<=f.hasta);
+  if (f.canal) data=data.filter(d=>f.canal.includes(d.canal));
+  if (f.sku)   data=data.filter(d=>d.skus.some(s=>s.toLowerCase().includes(f.sku)));
 
   const totalFact=data.reduce((s,d)=>s+d.precioFinal,0);
   const totalRent=data.reduce((s,d)=>s+d.rentabilidad,0);

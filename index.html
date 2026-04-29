@@ -1238,7 +1238,7 @@ async function loadBrasil() {
           canal:    ci('Canal De Venta'),
           skus:     ci("Sku's Vendidos"),
           precio:   ci('Precio Final'),
-          rent:     ci('Utilidad Venta'),   // $ amount, not %
+          rent:     ci('Rentabilidad Final'),  // R$ amount
           costo:    ci('Costo Sin Iva (total de productos)'),
         };
         // Fallback por fragmento
@@ -1301,18 +1301,22 @@ async function loadBrasil() {
 function renderBrasil() {
   const el=document.getElementById('page-brasil');
   if (!brData.length) { el.innerHTML='<div class="loading-overlay"><span>Sin datos de Brasil</span></div>'; return; }
-  if (charts.brDiario) { try{charts.brDiario.destroy();}catch(e){} }
-  if (charts.brCanal)  { try{charts.brCanal.destroy();}catch(e){} }
-  if (charts.brCross)  { try{charts.brCross.destroy();}catch(e){} }
-  if (charts.brDonut)  { try{charts.brDonut.destroy();}catch(e){} }
 
-  // Apply Brasil filters
+  // Apply Brasil filters first
   const f=brFilters||{};
   let data=brData;
   if (f.desde) data=data.filter(d=>d.fechaStr>=f.desde);
   if (f.hasta) data=data.filter(d=>d.fechaStr<=f.hasta);
   if (f.canal) data=data.filter(d=>f.canal.includes(d.canal));
   if (f.sku)   data=data.filter(d=>d.skus.some(s=>s.toLowerCase().includes(f.sku)));
+
+  if (!data.length) { el.innerHTML='<div class="loading-overlay"><span>Sin datos para los filtros seleccionados</span></div>'; return; }
+
+  // Destroy old charts
+  if (charts.brDiario) { try{charts.brDiario.destroy();}catch(e){} delete charts.brDiario; }
+  if (charts.brCanal)  { try{charts.brCanal.destroy();}catch(e){} delete charts.brCanal; }
+  if (charts.brCross)  { try{charts.brCross.destroy();}catch(e){} delete charts.brCross; }
+  if (charts.brDonut)  { try{charts.brDonut.destroy();}catch(e){} delete charts.brDonut; }
 
   const totalFact=data.reduce((s,d)=>s+d.precioFinal,0);
   const totalRent=data.reduce((s,d)=>s+d.rentabilidad,0);

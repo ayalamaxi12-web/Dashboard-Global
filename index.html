@@ -78,13 +78,13 @@ main::before{content:'';position:fixed;bottom:-80px;right:-80px;width:500px;heig
 .page{display:none;flex-direction:column;gap:20px;}
 .page.active{display:flex;}
 
-.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
-.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;position:relative;overflow:hidden;}
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 20px 18px;position:relative;overflow:hidden;}
 .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
 .kpi-card.c1::before{background:var(--accent);}.kpi-card.c2::before{background:var(--accent2);}.kpi-card.c3::before{background:var(--accent-light);}.kpi-card.c4::before{background:var(--accent3);}.kpi-card.c5::before{background:var(--accent4);}
-.kpi-label{font-family:'Inter',sans-serif;font-size:8px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:8px;}
-.kpi-value{font-size:18px;font-weight:700;letter-spacing:-0.01em;line-height:1;word-break:break-all;font-family:'Barlow Condensed',sans-serif;}
-.kpi-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--text2);margin-top:5px;}
+.kpi-label{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:10px;}
+.kpi-value{font-size:22px;font-weight:700;letter-spacing:-0.01em;line-height:1;word-break:break-all;font-family:'Barlow Condensed',sans-serif;}
+.kpi-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--text2);margin-top:7px;}
 .section-title{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:12px;display:flex;align-items:center;gap:10px;}
 .section-title::after{content:'';flex:1;height:1px;background:var(--border);}
 .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;transition:border-color 0.2s;}.chart-card:hover{border-color:rgba(0,157,188,0.2);}
